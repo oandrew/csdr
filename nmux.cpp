@@ -332,7 +332,7 @@ void* client_thread (void* param)
 
 		//Read data from global tsmpool and write it to client socket
 		if(NMUX_DEBUG) fprintf(stderr, "client %p: sending...", param);
-		ret = send(this_client->socket, pool_read_buffer + client_buffer_index, lpool->size - client_buffer_index, MSG_NOSIGNAL);
+		ret = send(this_client->socket, pool_read_buffer + client_buffer_index, lpool->size - client_buffer_index, 0);
 		if(NMUX_DEBUG) fprintf(stderr, "client sent.\n");
 		if(ret == -1) 
 		{

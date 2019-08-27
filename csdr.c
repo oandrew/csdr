@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define _POSIX_C_SOURCE 199309L
 #define _BSD_SOURCE
 #define _GNU_SOURCE
+#define _DARWIN_C_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -41,7 +42,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
-#include <time.h>
 #include <stdarg.h>
 #include "libcsdr.h"
 #include "libcsdr_gpl.h"
@@ -366,20 +366,20 @@ int initialize_buffers()
     buffer_u8 =     (unsigned char*)malloc(the_bufsize*sizeof(unsigned char));
     buffer_i16 =    (short*)        malloc(the_bufsize*sizeof(short));
     temp_f =        (float*)        malloc(the_bufsize*sizeof(float) * 4);
-    if(the_bufsize<=4096) //this is hacky, should be done correctly
-    {
-        fcntl(STDIN_FILENO, F_SETPIPE_SZ,  4096);
-        fcntl(STDOUT_FILENO, F_SETPIPE_SZ, 4096);
-    }
+    // if(the_bufsize<=4096) //this is hacky, should be done correctly
+    // {
+    //     fcntl(STDIN_FILENO, F_SETPIPE_SZ,  4096);
+    //     fcntl(STDOUT_FILENO, F_SETPIPE_SZ, 4096);
+    // }
     return the_bufsize;
 }
 
 int sendbufsize(int size)
 {
-    if(size<=4096)
-    {
-        fcntl(STDOUT_FILENO, F_SETPIPE_SZ, 4096);
-    }
+    // if(size<=4096)
+    // {
+    //     fcntl(STDOUT_FILENO, F_SETPIPE_SZ, 4096);
+    // }
     //The first word is a preamble, "csdr".
     //If the next csdr process detects it, sets the buffer size according to the second word
     if(!env_csdr_dynamic_bufsize_on) return env_csdr_fixed_bufsize;
@@ -424,8 +424,8 @@ int main(int argc, char *argv[])
     if(argc<=1) return badsyntax(0);
     if(!strcmp(argv[1],"--help")) return badsyntax(0);
 
-    fcntl(STDIN_FILENO, F_SETPIPE_SZ, 65536*32);
-    fcntl(STDOUT_FILENO, F_SETPIPE_SZ, 65536*32);
+    // fcntl(STDIN_FILENO, F_SETPIPE_SZ, 65536*32);
+    // fcntl(STDOUT_FILENO, F_SETPIPE_SZ, 65536*32);
     //fprintf(stderr, "csdr: F_SETPIPE_SZ\n");
 
     if(!strcmp(argv[1],"setbuf"))

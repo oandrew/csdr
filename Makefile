@@ -28,7 +28,8 @@
 
 LIBSOURCES =  fft_fftw.c libcsdr_wrapper.c 
 #SOURCES = csdr.c $(LIBSOURCES)
-cpufeature = $(if $(findstring $(1),$(shell cat /proc/cpuinfo)),$(2))
+CPU_FEATURES = sse sse2 sse3 sse4a  sse4_1 sse4_2
+cpufeature = $(if $(findstring $(1),$(CPU_FEATURES)),$(2))
 PARAMS_SSE = $(call cpufeature,sse,-msse) $(call cpufeature,sse2,-msse2) $(call cpufeature,sse3,-msse3) $(call cpufeature,sse4a,-msse4a) $(call cpufeature,sse4_1,-msse4.1) $(call cpufeature,sse4_2,-msse4.2 -msse4) -mfpmath=sse 
 PARAMS_NEON = -mfloat-abi=hard -march=armv7-a -mtune=cortex-a8 -mfpu=neon -mvectorize-with-neon-quad -funsafe-math-optimizations -Wformat=0 -DNEON_OPTS
 #tnx Jan Szumiec for the Raspberry Pi support
@@ -36,7 +37,7 @@ PARAMS_RASPI = -mfloat-abi=hard -mcpu=arm1176jzf-s -mfpu=vfp -funsafe-math-optim
 PARAMS_ARM = $(if $(call cpufeature,BCM2708,dummy-text),$(PARAMS_RASPI),$(PARAMS_NEON))
 PARAMS_SIMD = $(if $(call cpufeature,sse,dummy-text),$(PARAMS_SSE),$(PARAMS_ARM))
 PARAMS_LOOPVECT = -O3 -ffast-math -fdump-tree-vect-details -dumpbase dumpvect
-PARAMS_LIBS = -g -lm -lrt -lfftw3f -DUSE_FFTW -DLIBCSDR_GPL -DUSE_IMA_ADPCM
+PARAMS_LIBS = -g -lm -lfftw3f -DUSE_FFTW -DLIBCSDR_GPL -DUSE_IMA_ADPCM $(shell pkg-config --cflags --libs fftw3)
 PARAMS_SO = -fpic  
 PARAMS_MISC = -Wno-unused-result
 #DEBUG_ON = 0 #debug is always on by now (anyway it could be compiled with `make DEBUG_ON=1`)
@@ -53,20 +54,17 @@ libcsdr.so: fft_fftw.c fft_rpi.c libcsdr_wrapper.c libcsdr.c libcsdr_gpl.c fastd
 	@echo Auto-detected optimization parameters: $(PARAMS_SIMD)
 	@echo
 	rm -f dumpvect*.vect
-	gcc -std=gnu99 $(PARAMS_LOOPVECT) $(PARAMS_SIMD) $(LIBSOURCES) $(PARAMS_LIBS) $(PARAMS_MISC) -fpic -shared -Wl,-soname,libcsdr.so.$(SOVERSION) -o libcsdr.so.$(SOVERSION)
+	$(CC) -std=gnu99 $(PARAMS_LOOPVECT) $(PARAMS_SIMD) $(LIBSOURCES) $(PARAMS_LIBS) $(PARAMS_MISC) -fpic -shared -o libcsdr.so.$(SOVERSION)
 	@ln -fs libcsdr.so.$(SOVERSION) libcsdr.so
 ifeq ($(PARSEVECT),yes)
 	-./parsevect dumpvect*.vect
 endif
 csdr: csdr.c libcsdr.so
-	gcc -std=gnu99 $(PARAMS_LOOPVECT) $(PARAMS_SIMD) csdr.c $(PARAMS_LIBS) -L. -lcsdr $(PARAMS_MISC) -o csdr
+	$(CC) -std=gnu99 $(PARAMS_LOOPVECT) $(PARAMS_SIMD) csdr.c $(PARAMS_LIBS) -L. -lcsdr $(PARAMS_MISC) -o csdr
 ddcd: ddcd.cpp libcsdr.so ddcd.h
-	g++ $(PARAMS_LOOPVECT) $(PARAMS_SIMD) ddcd.cpp $(PARAMS_LIBS) -L. -lcsdr -lpthread $(PARAMS_MISC) -o ddcd
+	$(CXX) $(PARAMS_LOOPVECT) $(PARAMS_SIMD) ddcd.cpp $(PARAMS_LIBS) -L. -lcsdr -lpthread $(PARAMS_MISC) -o ddcd
 nmux: nmux.cpp libcsdr.so nmux.h tsmpool.cpp tsmpool.h
-	g++ $(PARAMS_LOOPVECT) $(PARAMS_SIMD) nmux.cpp tsmpool.cpp $(PARAMS_LIBS) -L. -lcsdr -lpthread $(PARAMS_MISC) -o nmux
-arm-cross: clean-vect
-	#note: this doesn't work since having added FFTW
-	arm-linux-gnueabihf-gcc -std=gnu99 -O3 -fshort-double -ffast-math -dumpbase dumpvect-arm -fdump-tree-vect-details -mfloat-abi=softfp -march=armv7-a -mtune=cortex-a9 -mfpu=neon -mvectorize-with-neon-quad -Wno-unused-result -Wformat=0 $(SOURCES) -lm -o ./csdr
+	$(CXX) $(PARAMS_LOOPVECT) $(PARAMS_SIMD) nmux.cpp tsmpool.cpp $(PARAMS_LIBS) -L. -lcsdr -lpthread $(PARAMS_MISC) -o nmux
 clean-vect:
 	rm -f dumpvect*.vect
 clean: clean-vect
